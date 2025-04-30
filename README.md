@@ -43,5 +43,5 @@ Results were saved in sample_pathes/rxn3086 folder.
 ## Link to papers
 https://chemrxiv.org/engage/chemrxiv/article-details/67cf041bfa469535b9bc28d4
 
-##Citations
+## Citations
 1. Xu M, Li B, Dong Z, Dral P, Zhu T, Chen H. ECTS: An ultra-fast diffusion model for exploring chemical reactions with equivariant consistency. ChemRxiv. 2025; doi:10.26434/chemrxiv-2025-f9vdp  
