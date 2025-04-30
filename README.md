@@ -7,16 +7,16 @@ Unveiling reaction mechanisms through the exploration of reaction paths, includi
 
 ## Installations
 Environment install:
-`
+
 	conda env create -f environment.yaml 
-`
+
 
 EcTs installation:
-`
+
 	cd ECTS
 
 	pip install -e .
-`
+
 
 ## Download pretrained models
 The pretrained models of ECTS is avaliable from https://drive.google.com/drive/folders/1M3wjAcx2GTLrdQ8DCCW8OrztMCKlwieF
@@ -24,19 +24,19 @@ The pretrained models of ECTS is avaliable from https://drive.google.com/drive/f
 ## Functions
 
 Examples for TS generation
-`
+
 	cd scripts
 
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
-`
+
 Results were saved in samples/rxn3086 folder.
 
 Examples for Path interpolation
-`
+
 	cd scripts 	
 
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample_path.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
-`
+
 
 Results were saved in sample_pathes/rxn3086 folder.
 
