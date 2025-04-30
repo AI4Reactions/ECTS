@@ -1,4 +1,4 @@
-##ECTS
+# ECTS
 
 ## Description
 This is the official code of "ECTS: An ultra-fast diffusion model for exploring chemical reactions with equivariant consistency". 
