@@ -1,0 +1,55 @@
+/home/myxu/EcTs_src/EcTs/model/equiops/irr_repr.py:21: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  Jd = torch.load(str(path))
+/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/nequip/__init__.py:20: UserWarning: !! PyTorch version 2.5.1 found. Upstream issues in PyTorch versions 1.13.* and 2.* have been seen to cause unusual performance degredations on some CUDA systems that become worse over time; see https://github.com/mir-group/nequip/discussions/311. The best tested PyTorch version to use with CUDA devices is 1.11; while using other versions if you observe this problem, an unexpected lack of this problem, or other strange behavior, please post in the linked GitHub issue.
+  warnings.warn(
+/home/myxu/EcTs_src/EcTs/graphs/datasets.py:28: SyntaxWarning: invalid escape sequence '\.'
+  molsupp=Chem.SDWriter(fname.strip('\.pickle')+'.sdf')
+/home/myxu/EcTs_src/EcTs/graphs/datasets.py:81: SyntaxWarning: invalid escape sequence '\.'
+  molsupp=Chem.SDWriter(save_path+'/'+fname[49:].strip('\.pickle')+'.sdf')
+Traceback (most recent call last):
+  File "/home/myxu/EcTs_src/scripts/sample.py", line 26, in <module>
+    r=read(rxyzfile)
+      ^^^^^^^^^^^^^^
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/ase/io/formats.py", line 793, in read
+    format = format or filetype(filename, read=isinstance(filename, str))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/ase/io/formats.py", line 965, in filetype
+    fd = open_with_compression(filename, 'rb')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/ase/io/formats.py", line 597, in open_with_compression
+    return open(filename, mode)
+           ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: './rxn0408/r.xyz'
+E0309 12:02:52.559000 1237441 site-packages/torch/distributed/elastic/multiprocessing/api.py:869] failed (exitcode: 1) local_rank: 0 (pid: 1237517) of binary: /home/myxu/anaconda3/envs/Torch/bin/python
+Traceback (most recent call last):
+  File "/home/myxu/anaconda3/envs/Torch2/bin/torchrun", line 33, in <module>
+    sys.exit(load_entry_point('torch==2.5.1', 'console_scripts', 'torchrun')())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 355, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/torch/distributed/run.py", line 919, in main
+    run(args)
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/torch/distributed/run.py", line 910, in run
+    elastic_launch(
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/torch/distributed/launcher/api.py", line 138, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/myxu/anaconda3/envs/Torch/lib/python3.12/site-packages/torch/distributed/launcher/api.py", line 269, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+sample.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2025-03-09_12:02:52
+  host      : ECS-MYTX-06
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 1237517)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

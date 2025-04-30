@@ -1,0 +1,19 @@
+{
+    "batchsize":40,
+    "c_block":4,
+    "n_head":8,
+    "x_sca_hidden":256,
+    "x_vec_hidden":128,
+    "edge_sca_hidden":128,
+    "edge_vec_hidden":64,
+    "coords_scale":10,
+    "init_lr":0.0001,
+    "calc_type":"PaiNN",
+    "load_online_model_path":"../pretrained_models/online_model_perepoch.cpk",
+    "load_energy_online_model_path":"../pretrained_models/energy_online_model_perepoch.cpk",
+    "load_path_online_model_path":"../pretrained_models/path_online_model_perepoch.cpk",
+    "load_energy_calc_path":"../pretrained_models/painn0.sd",
+    "with_ema_model":false,
+    "with_path_model":true,
+    "with_energy_guide":false
+}
