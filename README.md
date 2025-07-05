@@ -48,12 +48,12 @@ Examples for Path interpolation
 
 Results were saved in sample_pathes/rxn3086 folder.
 
-##Evaluation
+## Evaluation
 
 To evaluate ECTS on the test set
 
 	cd scripts
-	
+
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 eval.py -i ctrl_sample.json  --steps 1
 
 
