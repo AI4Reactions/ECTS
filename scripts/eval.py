@@ -14,17 +14,17 @@ os.environ["CUDA_LAUNCH_BLOCKING"]="1"
 
 local_rank=int(os.environ["LOCAL_RANK"])
 
-with open('../datasets/rp_pairs_DCR.pkl','rb') as f:
+with open('../datasets/test.pkl','rb') as f:
     test_rps=pickle.load(f)
 
-savepath='./sampled_ts_DCR'
+savepath='./sampled_ts'
 
 if not os.path.exists(savepath):
     os.makedirs(savepath)
 
 Model=EcTs_Model(modelname="EcTs_Model",local_rank=local_rank)
 GP.final_timesteps=diffsteps+1
-with open(f'{savepath}/Sample_results_DCR_{diffsteps}.txt','w') as f:
+with open(f'{savepath}/Sample_results_{diffsteps}.txt','w') as f:
     f.write("RXNID,RMSD_of_AVERAGE_TS,MEAN_RMSD_of_TS,MIN_RMSD_of_TS,ERROR_of_AVERAGE_ENERGY,MEAN_ENERGY_ERROR,MIN_ENERGY_ERROR, AVERAGE_TS_ENERGY,BEST_TS_ENERGY,ERROR_of_AVEARGE_ENERGY_NN,MEAN_ENERGY_ERROR_NN,MIN_ENERGY_ERROR_NN,AVERAGE_TS_ENERGY_NN, BEST_TS_ENERGY_NN,REF_TS_ENERGY,ENERGY_of_REACTANT,ENERGY_of_PRODUCT,ENERGY_ERROR_RATE\n")
     for i in tqdm(range(len(test_rps))):
         Result_Dict=Model.Eval_Ts(test_rps[i],ts_num_per_mol=40,
