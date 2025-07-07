@@ -27,7 +27,10 @@ The turtorial of ECTS in MLatom is available from https://xacs.xmu.edu.cn/docs/m
 Users can sign up a account of Aitomistic Platform (https://www.aitomistic.xyz) for online computations with ECTS. 
 
 ## Download pretrained models
-The pretrained models of ECTS is avaliable from https://drive.google.com/drive/folders/1M3wjAcx2GTLrdQ8DCCW8OrztMCKlwieF
+The pretrained models of ECTS is avaliable from https://figshare.com/account/projects/255383/articles/29487914
+## Processed datasets
+
+The RXNID of reactions in different datasets are provided in ECTS/datasets. The processed datasets is avaliable from https://figshare.com/account/projects/255383/articles/29487893
 
 ## Functions
 
@@ -36,7 +39,7 @@ Examples for TS generation
 	cd scripts
 
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
-
+	
 Results were saved in samples/rxn3086 folder.
 
 Examples for Path interpolation
@@ -44,7 +47,6 @@ Examples for Path interpolation
 	cd scripts 	
 
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample_path.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
-
 
 Results were saved in sample_pathes/rxn3086 folder.
 
