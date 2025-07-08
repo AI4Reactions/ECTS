@@ -62,6 +62,8 @@ Train the path structure generator $f_Path$ only:
 	
 	mv online_model_perepoch.cpk path_online_model_perepoch.cpk
 
+Note: User should train the $f_Path$ in another directory to avoid the file overwriting.
+
 ## Functions
 
 Examples for TS generation
