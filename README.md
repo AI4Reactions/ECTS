@@ -40,19 +40,19 @@ Train the TS predictor $f_Ts$ and Energy predictor $f_E$ together:
 	
 	CUDA_VISIBLE_DEVICES=0,1 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 2 --rdzv_id 1 train_ts_and_e.py -i ctrl_ts_e.json
 
-Train the TS predictor $f_Ts$ only:
+Train the TS predictor $f_{Ts}$ only:
 
 	cd scripts/train_ts
 	
 	CUDA_VISIBLE_DEVICES=0,1 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 2 --rdzv_id 1 train_ts.py -i ctrl_ts.json
 
-Train the energy predictor $f_E only:
+Train the energy predictor $f_E$ only:
 	
 	cd scripts/train_ts
 	
 	CUDA_VISIBLE_DEVICES=0,1 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 2 --rdzv_id 1 train_e.py -i ctrl_e.json
 
-Train the path structure generator $f_Path$ only:
+Train the path structure generator $f_{Path}$ only:
 	
 	cd scripts/train_path
 
@@ -62,7 +62,7 @@ Train the path structure generator $f_Path$ only:
 	
 	mv online_model_perepoch.cpk path_online_model_perepoch.cpk
 
-Note: User should train the $f_Path$ in another directory to avoid the file overwriting.
+User should train the $f_{Path}$ in another directory to avoid the file overwriting.
 
 ## Functions
 
