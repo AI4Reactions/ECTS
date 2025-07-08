@@ -1,0 +1,19 @@
+{
+    "batchsize":4,
+    "c_block":4,
+    "n_head":8,
+    "x_sca_hidden":256,
+    "x_vec_hidden":128,
+    "edge_sca_hidden":128,
+    "edge_vec_hidden":64,
+    "coords_scale":10,
+    "consistency_training_steps":21,
+    "final_timesteps":21,
+    "init_lr":0.0001,
+    "load_energy_calc_path":"../../pretrained_models/painn0.sd",
+    "calc_type":"painn",
+    "with_ema_model":true,
+    "with_energy_model":false,
+    "with_path_model":false
+}
+

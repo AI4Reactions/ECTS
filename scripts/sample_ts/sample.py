@@ -5,6 +5,7 @@ from tqdm import tqdm
 from EcTs.comparm import Update_PARAMS,GP
 from EcTs.utils import xyz2mol,xyz2AC,read_xyz_file
 import numpy as np 
+from EcTs.graphs import RP_pair
 
 parser=arg.ArgumentParser(description='EcTs: equivariant consistency model for transization state predictions')
 parser.add_argument('-i','--input')
@@ -33,7 +34,7 @@ def create_rp_pair(rfile,pfile,savename):
     rp_pair=RP_pair(
                     ratoms=ratoms,patoms=patoms,
                     radjs=radjs,padjs=padjs,
-                    rxyz=rxyz,pxyz=pxyz,
+                    rcoords=rxyz,pcoords=pxyz,
                     idx=savename
                     )    
     return rp_pair

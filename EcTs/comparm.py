@@ -45,11 +45,11 @@ class GPARMAS:
         self.load_energy_ema_model_path=None
         self.load_path_online_model_path=None
         self.load_path_ema_model_path=None
-        self.load_confidence_model_path=None
         self.with_ema_model=True
         self.with_path_model=True
         self.with_energy_guide=True
         self.with_confidence_model=True
+        self.with_energy_model=True
         self.n_mid_states=4
         self.predict_energy_barrier=False
         

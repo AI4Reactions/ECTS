@@ -36,9 +36,13 @@ def DFT_energy_ase(xyzfile):
                 )
     
     energy=mol.get_potential_energy()
+    #forces=mol.get_forces()
     with open (f"{xyzfile.strip('.xyz')}.dft",'w') as f:
         f.write(f'Energy: {energy}\n')
-    return 
+        #f.write(f'Forces: \n')
+        #for i in range(len(forces)):
+        #    f.write(f'{forces[i][0]} {forces[0][1]} {forces[0][2]}\n')        
+    return
 
 def DFT_energy(xyzfile):
     print (xyzfile)

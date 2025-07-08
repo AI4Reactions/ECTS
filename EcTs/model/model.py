@@ -31,19 +31,27 @@ def Create_logger_file(filepath):
     logger_file.flush() 
     return logger_file
 
-def Set_Dataloader(trainset,validset=None,epoch=0):
-    Train_Sampler=torch.utils.data.distributed.DistributedSampler(trainset)
-    trainloader=DataLoader(trainset,batch_size=GP.batchsize,shuffle=False,num_workers=GP.n_workers,sampler=Train_Sampler)
-    Train_Sampler.set_epoch(epoch)
-    print ('train_dataset sampler is done')
-    if validset is not None:
-        Valid_Sampler=torch.utils.data.distributed.DistributedSampler(validset)
-        validloader=DataLoader(validset,batch_size=GP.batchsize,shuffle=False,num_workers=GP.n_workers,sampler=Valid_Sampler)
-        Valid_Sampler.set_epoch(epoch)
-        print ('valid_dataset sampler is done')
-        return trainloader,validloader
+def Set_Dataloader(trainset,validset=None,epoch=0,device="cuda"):
+    if device!="cpu":
+        Train_Sampler=torch.utils.data.distributed.DistributedSampler(trainset)
+        trainloader=DataLoader(trainset,batch_size=GP.batchsize,shuffle=False,num_workers=GP.n_workers,sampler=Train_Sampler)
+        Train_Sampler.set_epoch(epoch)
+        print ('train_dataset sampler is done')
+        if validset is not None:
+            Valid_Sampler=torch.utils.data.distributed.DistributedSampler(validset)
+            validloader=DataLoader(validset,batch_size=GP.batchsize,shuffle=False,num_workers=GP.n_workers,sampler=Valid_Sampler)
+            Valid_Sampler.set_epoch(epoch)
+            print ('valid_dataset sampler is done')
+            return trainloader,validloader
+        else:
+            return trainloader,None
     else:
-        return trainloader,None
+        trainloader=DataLoader(trainset,batch_size=GP.batchsize,shuffle=True,num_workers=GP.n_workers)
+        if validset is not None:
+            validloader=DataLoader(validset,batch_size=GP.batchsize,shuffle=False,num_workers=GP.n_workers)
+            return trainloader,validloader
+        else:
+            return trainloader,None
 
 def masked_mean(P,pos_mask):
     denom = torch.sum(pos_mask, dim=1, keepdim=True)
@@ -72,16 +80,18 @@ class EcTs_Model:
 
         if not os.path.exists(f'./{self.modelname}/model'):
             os.system(f'mkdir -p ./{self.modelname}/model')
-
+        print (self.device)
         self.Load()
-        self.Set_GPU_environ()
+        if self.device!='cpu':
+            self.Set_GPU_environ()
+        
 
         device=next(self.online_model.parameters()).device
+        
         if os.path.exists(GP.load_energy_calc_path):
             if GP.calc_type=="Nequip":
                 self.calc = NequIPCalculator.from_deployed_model(model_path=GP.load_energy_calc_path,device=device)
                 #pass
-
             else:
                 statedict = torch.load(GP.load_energy_calc_path,map_location="cpu")
                 painn_model = painn.PaiNN(3, 256, 5)
@@ -91,27 +101,32 @@ class EcTs_Model:
                 print (self.calc)
         else:
             self.calc = None  
-        self.pathgen=Path_Sampler(self.online_model,self.path_online_model,self.energy_online_model,calc=self.calc, n_mid_states=GP.n_mid_states,sigma_data=GP.sigma_data,sigma_min=GP.sigma_min)
-        print ("+"*80)
-        print (self.calc)
+
+        if GP.with_path_model:
+            self.pathgen=Path_Sampler(self.online_model,self.path_online_model,self.energy_online_model,calc=self.calc, n_mid_states=GP.n_mid_states,sigma_data=GP.sigma_data,sigma_min=GP.sigma_min)
+            print ("+"*80)
+            print (self.calc)
         self.logger=Create_logger_file(f'./{self.modelname}/Training.log')
         self.batchsize=GP.batchsize
         return
     
     def __build_model(self):
-
-        Set_gpu_envir(self.local_rank)
+        if self.device!='cpu':
+            Set_gpu_envir(self.local_rank)
         self.online_model = TsGen()
-        self.energy_online_model=TseGen()
-        self.path_online_model=TsGen()
+        
+        if GP.with_energy_model:
+            self.energy_online_model=TseGen()
+
+        if GP.with_path_model:
+            self.path_online_model=TsGen()
 
         if GP.with_ema_model:
             self.ema_model = TsGen()
-            self.energy_ema_model=TseGen()
-            self.path_ema_model=TsGen()
-
-        if GP.with_confidence_model:
-            self.confidence_model = TsConfidence()
+            if GP.with_energy_model:
+                self.energy_ema_model=TseGen()
+            if GP.with_path_model:
+                self.path_ema_model=TsGen()
 
         self.consistency_training=ConsistencyTraining(
             sigma_min=GP.sigma_min,
@@ -119,27 +134,29 @@ class EcTs_Model:
             sigma_data=GP.sigma_data,
             rho=GP.rho,
             initial_timesteps=GP.initial_timesteps,
-            final_timesteps=GP.final_timesteps
+            final_timesteps=GP.final_timesteps,
+            with_energy=GP.with_energy_model,
             )
 
         self.consistency_sampling_and_editing = ConsistencySamplingAndEditing(
                         sigma_min = GP.sigma_min, # minimum std of noise
                         sigma_data = GP.sigma_data, # std of the data
+                        with_energy=GP.with_energy_model, # whether to use energy model
                         )
         
     def Set_GPU_environ(self):
         Set_model_rank(self.online_model,self.local_rank)
-        Set_model_rank(self.energy_online_model,self.local_rank)
+        if GP.with_energy_model:
+            Set_model_rank(self.energy_online_model,self.local_rank)
         if GP.with_path_model:
             Set_model_rank(self.path_online_model,self.local_rank)
 
         if GP.with_ema_model:
             Set_model_rank(self.ema_model,self.local_rank)
-            Set_model_rank(self.energy_ema_model,self.local_rank)
+            if GP.with_energy_model:
+                Set_model_rank(self.energy_ema_model,self.local_rank)
             if GP.with_path_model:
                 Set_model_rank(self.path_ema_model,self.local_rank)
-        if GP.with_confidence_model:
-            Set_model_rank(self.confidence_model,self.local_rank)
 
         return 
     
@@ -156,7 +173,7 @@ class EcTs_Model:
             self.online_model.load_state_dict(modelcpkt["state_dict"],strict=False)
             print ('load online model successful')
 
-        if GP.load_energy_online_model_path is not None:
+        if GP.load_energy_online_model_path is not None and GP.with_energy_model:
             modelcpkt=torch.load(GP.load_energy_online_model_path,map_location="cpu")
             self.energy_online_model.load_state_dict(modelcpkt["state_dict"],strict=False)
             print ('load energy online model successful')           
@@ -173,7 +190,7 @@ class EcTs_Model:
                 self.ema_model.load_state_dict(modelcpkt["state_dict"],strict=False)
                 print ('load ema model successful')
 
-            if GP.load_energy_ema_model_path is not None:
+            if GP.load_energy_ema_model_path is not None and GP.with_energy_model:
                 modelcpkt=torch.load(GP.load_energy_ema_model_path,map_location="cpu")
                 self.energy_ema_model.load_state_dict(modelcpkt["state_dict"],strict=False)
                 print ('load energy ema model successful')
@@ -182,47 +199,29 @@ class EcTs_Model:
                 modelcpkt=torch.load(GP.load_path_ema_model_path,map_location="cpu")
                 self.path_ema_model.load_state_dict(modelcpkt["state_dict"],strict=False)
                 print ("load path ema model successful") 
-        
-        if GP.with_confidence_model:
-            if GP.load_confidence_model_path is not None:
-                modelcpkt=torch.load(GP.load_confidence_model_path,map_location="cpu")
-                self.confidence_model.load_state_dict(modelcpkt["state_dict"],strict=False)
-                print ('load confidence model successful')
             
         return 
 
     def __to_device(self,tensor):
-        if self.device=='cuda':
+        if self.device!='cpu':
             return tensor.cuda(self.local_rank)
         else:
             return tensor
 
-    def IC_Loss(self,pred_coords,target_coords,zb,zb_masks,za,za_masks,zd,zd_masks,gmasks):
-        #pred_bonddis,pred_angle,pred_dihedral=xyz2ics_v2(pred_coords,zb,za,zd) #笛卡尔转内坐标
-        #target_bonddis,target_angle,target_dihedral=xyz2ics_v2(target_coords,zb,za,zd)
+    def Dist_Loss(self,pred_coords,target_coords,gmasks):
 
         pred_dismat=torch.cdist(pred_coords,pred_coords,compute_mode='donot_use_mm_for_euclid_dist')
         target_dismat=torch.cdist(target_coords,target_coords,compute_mode='donot_use_mm_for_euclid_dist')
-        #print ('gmasks',gmasks.shape)
         gmasks_2D=gmasks.unsqueeze(-1)*gmasks.unsqueeze(-1).permute(0,2,1)
 
-        #loss_bonddis=F.mse_loss(pred_bonddis[zb_masks],target_bonddis[zb_masks])
-        #loss_angle=F.mse_loss(pred_angle[za_masks],target_angle[za_masks])
-        #dihedral_diff=torch.abs(pred_dihedral[zd_masks]-target_dihedral[zd_masks])
-        #dihedral_diff=torch.where(dihedral_diff>math.pi,math.pi*2-dihedral_diff,dihedral_diff)
-        #loss_dihedral=torch.mean(torch.square(dihedral_diff))
-
         loss_dismat=F.mse_loss(pred_dismat[gmasks_2D],target_dismat[gmasks_2D])
-
-        #return loss_bonddis,loss_angle,loss_dihedral,loss_dismat
         return loss_dismat
 
-    def Get_RP_Data_to_GPU(self,Datas):
+    def Get_RP_Data_to_Device(self,Datas):
         rfeats,pfeats,radjs,padjs,rcoords,pcoords,tscoords,masks=Datas["RFeats"],Datas["PFeats"],Datas["RAdjs"],Datas["PAdjs"],Datas["RCoords"],Datas["PCoords"],Datas["TsCoords"],Datas["Masks"]
         redges,pedges=Datas["REdges"],Datas["PEdges"]
         renergy,penergy,tsenergy=Datas["REnergies"],Datas["PEnergies"],Datas["TsEnergies"]
         rforces,pforces,tsforces=Datas["RForces"],Datas["PForces"],Datas["TsForces"]
-        zb,zb_masks,za,za_masks,zd,zd_masks=Datas["Zb"],Datas["Zb_Masks"],Datas["Za"],Datas["Za_Masks"],Datas["Zd"],Datas["Zd_Masks"]
 
         rfeats=self.__to_device(rfeats)
         pfeats=self.__to_device(pfeats)
@@ -242,72 +241,69 @@ class EcTs_Model:
         rforces=self.__to_device(rforces)
         pforces=self.__to_device(pforces)
         tsforces=self.__to_device(tsforces)
-        zb=self.__to_device(zb)
-        zb_masks=self.__to_device(zb_masks)
-        za=self.__to_device(za)
-        za_masks=self.__to_device(za_masks)
-        zd=self.__to_device(zd)
-        zd_masks=self.__to_device(zd_masks)
 
         return rfeats,pfeats,radjs,padjs,redges,pedges,rcoords,pcoords,tscoords,masks,\
-            zb,zb_masks,za,za_masks,zd,zd_masks,\
             renergy,penergy,tsenergy,rforces,pforces,tsforces
 
     def Train_Step(self,Datas,step_id,mode='train',target='all'):
         if mode=='train':
             self.online_model.train()
             self.ema_model.train()
-            self.energy_online_model.train()
-            self.energy_ema_model.train()
+            if GP.with_energy_model:
+                self.energy_online_model.train()
+                self.energy_ema_model.train()
         else:
             self.online_model.eval()
             self.ema_model.eval()
-            self.energy_online_model.eval()
-            self.energy_ema_model.eval()
+            if GP.with_energy_model:
+                self.energy_online_model.eval()
+                self.energy_ema_model.eval()
 
         rfeats,pfeats,radjs,padjs,redges,pedges,rcoords,pcoords,tscoords,masks,\
-        zb,zb_masks,za,za_masks,zd,zd_masks,\
-        renergy,penergy,tsenergy,rforces,pforces,tsforces=self.Get_RP_Data_to_GPU(Datas)
+            renergy,penergy,tsenergy,rforces,pforces,tsforces=self.Get_RP_Data_to_Device(Datas)
 
         self.optim.zero_grad()
 
         predicted_coords,predicted_energy,predicted_forces,target_coords,target_energy,target_forces=self.consistency_training(self.online_model,
                                                     self.ema_model,self.energy_online_model,self.energy_ema_model,rfeats,pfeats,radjs,padjs,redges,pedges,rcoords,pcoords,tscoords,masks,step_id,GP.final_timesteps)
-
         predicted_coords=predicted_coords-masked_mean(predicted_coords,masks)
         target_coords=target_coords-masked_mean(target_coords,masks)
         ref_coords=tscoords-masked_mean(tscoords,masks)
 
         loss_xyz_to_next=F.mse_loss(predicted_coords[masks],target_coords[masks])
         loss_xyz_to_ref=F.mse_loss(predicted_coords[masks],ref_coords[masks])
-        #loss_bond_to_next,loss_angle_to_next,loss_dihedral_to_next,loss_dismat_to_next=self.IC_Loss(predicted_coords,target_coords,zb,zb_masks,za,za_masks,zd,zd_masks,masks)
-        #loss_bond_to_ref,loss_angle_to_ref,loss_dihedral_to_ref,loss_dismat_to_ref=self.IC_Loss(predicted_coords,ref_coords,zb,zb_masks,za,za_masks,zd,zd_masks,masks)
-        loss_dismat_to_next=self.IC_Loss(predicted_coords,target_coords,zb,zb_masks,za,za_masks,zd,zd_masks,masks)
-        loss_dismat_to_ref=self.IC_Loss(predicted_coords,ref_coords,zb,zb_masks,za,za_masks,zd,zd_masks,masks)
-        #print (predicted_energy.shape,renergy.shape,target_energy.shape,tsenergy.shape)
-        loss_energy_to_next=F.mse_loss(predicted_energy,target_energy)
-        loss_forces_to_next=F.mse_loss(predicted_forces[masks],target_forces[masks])
+        loss_dismat_to_next=self.Dist_Loss(predicted_coords,target_coords,masks)
+        loss_dismat_to_ref=self.Dist_Loss(predicted_coords,ref_coords,masks)
 
-        if GP.predict_energy_barrier:
-            loss_current_energy_to_ref=F.mse_loss(predicted_energy,tsenergy.squeeze(-1)-renergy.squeeze(-1))
-            loss_next_energy_to_ref=F.mse_loss(target_energy,tsenergy.squeeze(-1)-renergy.squeeze(-1))
-        else:
-            loss_current_energy_to_ref=F.mse_loss(predicted_energy-renergy.squeeze(-1),tsenergy.squeeze(-1)-renergy.squeeze(-1))
-            loss_next_energy_to_ref=F.mse_loss(target_energy-renergy.squeeze(-1),tsenergy.squeeze(-1)-renergy.squeeze(-1))
-        loss_current_forces_to_ref=F.mse_loss(predicted_forces[masks],tsforces[masks])
+        if GP.with_energy_model:
+            loss_energy_to_next=F.mse_loss(predicted_energy,target_energy)
+            loss_forces_to_next=F.mse_loss(predicted_forces[masks],target_forces[masks])
 
+            if GP.predict_energy_barrier:
+                loss_current_energy_to_ref=F.mse_loss(predicted_energy,tsenergy.squeeze(-1)-renergy.squeeze(-1))
+                loss_next_energy_to_ref=F.mse_loss(target_energy,tsenergy.squeeze(-1)-renergy.squeeze(-1))
+            else:
+                loss_current_energy_to_ref=F.mse_loss(predicted_energy-renergy.squeeze(-1),tsenergy.squeeze(-1)-renergy.squeeze(-1))
+                loss_next_energy_to_ref=F.mse_loss(target_energy-renergy.squeeze(-1),tsenergy.squeeze(-1)-renergy.squeeze(-1))
+            loss_current_forces_to_ref=F.mse_loss(predicted_forces[masks],tsforces[masks])
 
         self.lr=self.optim.state_dict()['param_groups'][0]['lr']
-        lstr_next=f'target: {target} , Xyz: {loss_xyz_to_next.item():.3F} , D: {loss_dismat_to_next.item():.3F}, E: {loss_energy_to_next.item():.3F}, F: {loss_forces_to_next.item():.3F}'
-        lstr_ref=f'target: {target} , Xyz: {loss_xyz_to_ref.item():.3F} , D: {loss_dismat_to_ref.item():.3F}, Curr E: {loss_current_energy_to_ref.item():.3F}, Curr F: {loss_current_forces_to_ref.item():.3F}, Next E: {loss_next_energy_to_ref.item():.3F}'
+        
+        lstr_next=f'Next Xyz: {loss_xyz_to_next.item():.3F} , D: {loss_dismat_to_next.item():.3F}, '
+        lstr_ref=f'Current Xyz: {loss_xyz_to_ref.item():.3F} , D: {loss_dismat_to_ref.item():.3F},'
+        if GP.with_energy_model:
+            lstr_next+=f'E: {loss_energy_to_next.item():.3F}, '
+            lstr_ref+=f' Curr E: {loss_current_energy_to_ref.item():.3F}, Next E: {loss_next_energy_to_ref.item():.3F}'
         
         self.lr=self.optim.state_dict()['param_groups'][0]['lr']
 
         loss_to_next=loss_xyz_to_next+loss_dismat_to_next
 
-        loss_to_ref=loss_dismat_to_ref*0.5
-        
-        loss=loss_to_next+(loss_energy_to_next+loss_forces_to_next)*0.5+2*(loss_current_energy_to_ref+loss_current_forces_to_ref)
+        loss_to_ref=loss_dismat_to_ref
+
+        loss=loss_to_next+loss_to_ref*0.5
+        if GP.with_energy_model:
+            loss+=(loss_energy_to_next+loss_forces_to_next)*0.5+2*(loss_current_energy_to_ref+loss_current_forces_to_ref)
         
         lstr=lstr_next+' ; '+lstr_ref 
         
@@ -315,60 +311,36 @@ class EcTs_Model:
             loss.backward()
             self.optim.step()
             num_timesteps=timesteps_schedule(step_id,GP.final_timesteps,initial_timesteps=GP.initial_timesteps,final_timesteps=GP.final_timesteps)
+            
             ema_decay_rate = ema_decay_rate_schedule(
                                 num_timesteps,
                                 initial_ema_decay_rate=0.95,
                                 initial_timesteps=2,
                             )
+            
             if target=='all':
                 update_ema_model(self.ema_model,self.online_model,ema_decay_rate)
+                if GP.with_energy_model:
+                    update_ema_model(self.energy_ema_model,self.energy_online_model,ema_decay_rate)
+            elif target=='energy':
                 update_ema_model(self.energy_ema_model,self.energy_online_model,ema_decay_rate)
             else:
-                update_ema_model(self.energy_ema_model,self.energy_online_model,ema_decay_rate)
+                update_ema_model(self.ema_model,self.online_model,ema_decay_rate)
 
         return loss.item(),lstr
     
-    def Train_Confidence(self,Datas,mode='train'):
-        if mode=='train':
-            self.confidence_model.train()
-        else:
-            self.confidence_model.eval()
-        
-        rfeats,pfeats,radjs,padjs,rcoords,pcoords,tscoords,masks,labels=Datas["RFeats"],Datas["PFeats"],Datas["RAdjs"],Datas["PAdjs"],Datas["RCoords"],Datas["PCoords"],Datas["TsCoords"],Datas["Masks"],Datas["Labels"]
-        rfeats=self.__to_device(rfeats)
-        pfeats=self.__to_device(pfeats)
-        radjs=self.__to_device(radjs)
-        padjs=self.__to_device(padjs)
-        rcoords=self.__to_device(rcoords)
-        pcoords=self.__to_device(pcoords)
-        tscoords=self.__to_device(tscoords)
-        masks=self.__to_device(masks)
-        labels=self.__to_device(labels)
-        
-        self.optim.zero_grad()
-
-        predicted_scores=self.confidence_model(rfeats,pfeats,radjs,padjs,rcoords,pcoords,tscoords,masks)
-        criteria=torch.nn.BCEWithLogitsLoss()
-        Loss=criteria(predicted_scores.view(-1),labels.view(-1).float())
-        predicted_labels=torch.round(torch.sigmoid(predicted_scores))
-        acc=torch.sum(predicted_labels==labels)/len(labels)
-        if mode=='train':
-            Loss.backward()
-            self.optim.step()
-        self.lr=self.optim.state_dict()['param_groups'][0]['lr']
-        lstr=f'BCE Loss: {Loss.item():.3F} ; ACC: {acc.item():.3F}'
-
-        return Loss.item(),acc.item(),lstr
-    
-    def Fit(self,Train_RPFiles,Test_RPFiles,Epochs=100,miniepochs=100,target='all'):
+    def Fit(self,Train_RPFiles,Test_RPFiles,Epochs=100,miniepochs=10,target='all'):
         #print ('Here')
+        assert self.device!='cpu', "CPU is not supported for training"
         if target=='all':
-            self.optim=Adam([
-                {"params":self.online_model.parameters()},
-                {"params":self.energy_online_model.parameters()}
-                ], lr = GP.init_lr, betas=(0.5,0.999))
+            params=[{"params":self.online_model.parameters()},]
+            if GP.with_energy_model:
+                params.append({"params":self.energy_online_model.parameters()})
+            self.optim=Adam(params, lr = GP.init_lr, betas=(0.5,0.999))
         elif target=='energy':
             self.optim=Adam(self.energy_online_model.parameters(), lr = GP.init_lr, betas=(0.5,0.999))
+        else:
+            self.optim=Adam(self.online_model.parameters(), lr = GP.init_lr, betas=(0.5,0.999))
 
         self.lr_scheduler= ReduceLROnPlateau(
                 self.optim, mode='min',
@@ -438,96 +410,15 @@ class EcTs_Model:
                 dist.barrier()        
         return 
 
-    def Fit_confidence(self,Train_RP_Confidence_Files, Test_RP_Confidence_Files, Epochs=100, miniepochs=100):
-        #print ('Here')
-        self.optim=Adam(self.confidence_model.parameters(), lr = GP.init_lr, betas=(0.5,0.999))
-
-        self.lr_scheduler= ReduceLROnPlateau(
-                self.optim, mode='min',
-                factor=0.9, patience=GP.lr_patience,
-                verbose=True, threshold=0.0001, threshold_mode='rel',
-                cooldown=GP.lr_cooldown,
-                min_lr=1e-07, eps=1e-07)
-        
-        train_rpdatas=[]
-        test_rpdatas=[]
-        
-        for Fname in Train_RP_Confidence_Files:
-            with open(Fname,'rb') as f:
-                RPs=pickle.load(f)
-                train_rpdatas+=RPs
-
-        random.shuffle(train_rpdatas)
-
-        for Fname in Test_RP_Confidence_Files:
-            with open(Fname,'rb') as f:
-                RPs=pickle.load(f)
-                test_rpdatas+=RPs
-
-        random.shuffle(test_rpdatas)
-
-        npairs_per_miniepoch=math.ceil(len(train_rpdatas)/miniepochs)
-        self.epochs=0
-        for epoch in range(Epochs):
-            for mini in range(miniepochs):
-                random.shuffle(test_rpdatas)
-                rpdatas=train_rpdatas[mini*npairs_per_miniepoch:(mini+1)*npairs_per_miniepoch]
-                print (len(rpdatas))
-                Train_Dataset=RP_Confidence_Dataset(rpdatas,name='trainset')
-                Test_Dataset=RP_Confidence_Dataset(test_rpdatas[:1000],name='validset')
-                trainloader,testloader=Set_Dataloader(Train_Dataset,Test_Dataset)
-                trainbar=tqdm(enumerate(trainloader))
-                testbar=tqdm(enumerate(testloader))
-                train_loss_list=[]
-                train_acc_list=[]
-
-                for bid,Datas in trainbar:
-                    step_loss,acc,step_lstr=self.Train_Confidence(Datas)
-                    train_loss_list.append(step_loss)
-                    train_acc_list.append(acc)
-                    if self.local_rank==0 or self.local_rank is None:
-                        lstr=f'Training -- Epochs: {self.epochs} bid: {bid} lr: {self.lr:.3E} '+step_lstr+f' Avg Loss: {np.mean(train_loss_list):.3F} Avg ACC: {np.mean(train_acc_list):.3F}'
-                        print (lstr)
-                        self.logger.write(lstr+'\n')
-                        self.logger.flush()
-                    self.lr_scheduler.step(metrics=step_loss)
-                valid_loss_list=[]
-                valid_acc_list=[]
-                for tid,tDatas in testbar:
-                    step_loss,acc,step_lstr=self.Train_Confidence(tDatas,mode='eval')
-                    valid_loss_list.append(step_loss)
-                    valid_acc_list.append(acc)
-                    lstr=f'Test -- Epochs: {self.epochs} bid: {tid} lr: {self.lr:.3E} '+step_lstr+f' Avg Loss: {np.mean(valid_loss_list):.3F} Avg ACC: {np.mean(valid_acc_list):.3F}'
-                    if self.local_rank==0 or self.local_rank is None:
-                        print (lstr)
-                        self.logger.write(lstr+'\n')
-                        self.logger.flush()
-
-                if self.local_rank==0 or self.local_rank is None:
-                    self.Save_confidence_params(label='perepoch')
-
-                if self.local_rank is not None:
-                    dist.barrier() 
-                
-            self.epochs+=1
-            if self.epochs%2==0:
-                if self.local_rank==0 or self.local_rank is None:
-                    self.Save_confidenceparams(label=f'{self.epochs}')
-
-            if self.local_rank is not None:
-                dist.barrier()        
-
-        return
-
-
     def Save_params(self,label='0'):
         savepath=f'{self.modelname}/model/online_model_{label}.cpk'
         savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.online_model.state_dict()}
         torch.save(savedict,savepath)    
-        
-        savepath=f'{self.modelname}/model/energy_online_model_{label}.cpk'
-        savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.energy_online_model.state_dict()}
-        torch.save(savedict,savepath)    
+
+        if GP.with_energy_model:
+            savepath=f'{self.modelname}/model/energy_online_model_{label}.cpk'
+            savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.energy_online_model.state_dict()}
+            torch.save(savedict,savepath)    
         
         if GP.with_path_model:
             savepath=f'{self.modelname}/model/path_online_model_{label}.cpk'
@@ -535,26 +426,21 @@ class EcTs_Model:
             torch.save(savedict,savepath)    
         
         if GP.with_ema_model:
-            savepath=f'{self.modelname}/model/energy_ema_model_{label}.cpk'
-            savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.energy_ema_model.state_dict()}
-            torch.save(savedict,savepath)        
-            
             savepath=f'{self.modelname}/model/ema_model_{label}.cpk'
             savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.ema_model.state_dict()}
             torch.save(savedict,savepath)
 
+            if GP.with_energy_model:
+                savepath=f'{self.modelname}/model/energy_ema_model_{label}.cpk'
+                savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.energy_ema_model.state_dict()}
+                torch.save(savedict,savepath)        
+            
             if GP.with_path_model:
                 savepath=f'{self.modelname}/model/path_ema_model_{label}.cpk'
                 savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.path_ema_model.state_dict()}
                 torch.save(savedict,savepath)     
         return 
     
-    def Save_confidence_params(self,label='0'):
-        savepath=f'{self.modelname}/model/confidence_model_{label}.cpk'
-        savedict={'epochs':self.epochs,'lr':self.lr,'state_dict':self.online_model.state_dict()}
-        torch.save(savedict,savepath)
-        return 
-
     def sample_ts_batch(self,Datas):
         rfeats=self.__to_device(Datas["RFeats"])
         pfeats=self.__to_device(Datas["PFeats"])
@@ -567,7 +453,7 @@ class EcTs_Model:
         pcoords=self.__to_device(Datas["PCoords"])
         masks=self.__to_device(Datas["Masks"])
 
-        if self.device=='cuda':
+        if self.device!='cpu':
             rfeats,pfeats,radjs,padjs,rcoords,pcoords,masks=rfeats.cuda(self.local_rank),pfeats.cuda(self.local_rank),\
             radjs.cuda(self.local_rank),padjs.cuda(self.local_rank),\
             rcoords.cuda(self.local_rank),pcoords.cuda(self.local_rank),\
@@ -575,12 +461,13 @@ class EcTs_Model:
             redges,pedges=redges.cuda(self.local_rank),pedges.cuda(self.local_rank)
 
         with torch.no_grad():
+            print (pcoords.device)
             sigmas = karras_schedule(
                 GP.final_timesteps, GP.sigma_min, GP.sigma_max, GP.rho, pcoords.device
             )
             
             sigmas= reversed(sigmas)[:-1]
-            
+            init_y= torch.randn(rcoords.shape).to(pcoords)
             samples, energies, forces, samples_list, energies_list, forces_list = self.consistency_sampling_and_editing(
                                     self.online_model,
                                     self.energy_online_model,
@@ -588,11 +475,12 @@ class EcTs_Model:
                                     radjs=radjs,padjs=padjs,
                                     redges=redges,pedges=pedges,
                                     rcoords=rcoords,pcoords=pcoords,
-                                    y=torch.randn(rcoords.shape).cuda(), # used to infer the shapes
+                                    y=init_y, # used to infer the shapes
                                     sigmas=sigmas, # sampling starts at the maximum std (T)
                                     masks=masks,
                                     clip_denoised=False, # whether to clamp values to [-1, 1] range
                                     verbose=True,
+                                    with_energy=GP.with_energy_model,
                                 )
             
         return samples,energies,forces,samples_list,energies_list,forces_list
@@ -694,10 +582,10 @@ class EcTs_Model:
         
         write_combine_pymol_script([f'{i}.xyz' for i in ['r','p','ref']+[f"{self.local_rank}-"+str(i) for i in range(total_samples.shape[0])]],
                                    path=f'{savepath}',scriptname=f'combine.pml',outputname=f'combine')
+        if self.device!='cpu':
+            dist.barrier() 
         
-        dist.barrier() 
-        
-        print (total_rmsd_list)
+        #print (total_rmsd_list)
 
         with open(f'{savepath}/{self.local_rank}-result.txt','w') as f:
             for i in range(total_samples.shape[0]):
@@ -739,7 +627,8 @@ class EcTs_Model:
         self.write_xyz(RP.ratoms,RP.pcoords,f'{savepath}/p.xyz',title=f'{RP.idx}_p')
 
         dataset=RP_Dataset(Final_RPs,name='sample')
-        sample_loader,_=Set_Dataloader(dataset)
+        
+        sample_loader,_=Set_Dataloader(dataset,device=self.device)
 
         bar=tqdm(enumerate(sample_loader))
 
@@ -751,43 +640,54 @@ class EcTs_Model:
             samples,energies,forces,samples_list,energies_list,forces_list=self.sample_ts_batch(Datas)
             
             samples_list=torch.cat([s.unsqueeze(0) for s in samples_list],axis=0).clone().detach().cpu().permute(1,0,2,3)
-            energies_list=torch.cat([s.unsqueeze(0) for s in energies_list],axis=0).clone().detach().cpu().permute(1,0)
-            forces_list=torch.cat([s.unsqueeze(0) for s in forces_list],axis=0).clone().detach().cpu().permute(1,0,2,3)
-
             total_samples.append(samples)
-            total_energies.append(energies) 
-            total_forces.append(forces)
+            if GP.with_energy_model:
+                energies_list=torch.cat([s.unsqueeze(0) for s in energies_list],axis=0).clone().detach().cpu().permute(1,0)
+                forces_list=torch.cat([s.unsqueeze(0) for s in forces_list],axis=0).clone().detach().cpu().permute(1,0,2,3)
+
+                total_energies.append(energies) 
+                total_forces.append(forces)
             
         total_samples=torch.concat(total_samples,axis=0).clone().detach().cpu().numpy()
-        total_energies=torch.concat(total_energies,axis=0).clone().detach().cpu().numpy()
-        total_forces=torch.concat(total_forces,axis=0).clone().detach().cpu().numpy()
-        average_energy=np.mean(total_energies)
+        if GP.with_energy_model:
+            total_energies=torch.concat(total_energies,axis=0).clone().detach().cpu().numpy()
+            total_forces=torch.concat(total_forces,axis=0).clone().detach().cpu().numpy()
+            average_energy=np.mean(total_energies)
 
         coords_list=[]
-        total_nn_energies=[]
+        if GP.with_energy_model:
+            total_nn_energies=[]
+
         for i in range(total_samples.shape[0]):
             os.system(f'mkdir -p {savepath}')
             sampled_coords=total_samples[i][:RP.natoms]
             sampled_coords=sampled_coords-np.mean(sampled_coords,axis=0,keepdims=True)
             coords_list.append(sampled_coords)
             self.write_xyz(RP.ratoms,sampled_coords,f'{savepath}/{self.local_rank}-{i}.xyz',title=f'{RP.idx}_Ts')
-            asemol=read(f'{savepath}/{self.local_rank}-{i}.xyz')
-            asemol.calc=self.calc
-            energy=asemol.get_potential_energy()
-            total_nn_energies.append(energy)
+            if GP.with_energy_model:
+                asemol=read(f'{savepath}/{self.local_rank}-{i}.xyz')
+                asemol.calc=self.calc
+                energy=asemol.get_potential_energy()
+                total_nn_energies.append(energy)
             write_pymol_script(fname=f'{self.local_rank}-{i}.xyz',path=f'{savepath}/',scriptname=f'{self.local_rank}-{i}.pml',outputname=f'{self.local_rank}-{i}.pse')
 
-        total_nn_energies=np.array(total_nn_energies)
+        if GP.with_energy_model:
+            total_nn_energies=np.array(total_nn_energies)
 
         average_coords=cal_aligned_average_coords(coords_list)     
         self.write_xyz(RP.ratoms,average_coords,f'{savepath}/{self.local_rank}-average-ts.xyz',title=f'{RP.idx}_Average_Ts') 
-        
-        dist.barrier() 
+        if self.device!='cpu':
+            dist.barrier() 
 
         with open(f'{savepath}/{self.local_rank}-result.txt','w') as f:
-            f.write("Index, Rank, ID, TS Energy Predictions with f_e, TS Energy Predictions with NNPs\n")
+            
+            f.write("Index, Rank, ID, TS Energy Predictions with f_e (kcal/mol)\n")
+
             for i in range(total_samples.shape[0]):
-                f.write(f'{RP.idx}, {self.local_rank}, {i}, {total_energies[i]*23.06:.3f}, {total_nn_energies[i]*23.06:.3f} \n')
+                if GP.with_energy_model:
+                    f.write(f'{RP.idx}, {self.local_rank}, {i}, {(total_energies[i])*23.06:.3f}\n')
+                else:
+                    f.write(f'{RP.idx}, {self.local_rank}, {i}, 0 \n')
 
         return 
 
@@ -803,7 +703,7 @@ class EcTs_Model:
         pcoords=self.__to_device(Datas["PCoords"])
         masks=self.__to_device(Datas["Masks"])
         print (rfeats.shape)
-        if self.device=='cuda':
+        if self.device!='cpu':
             rfeats,pfeats,radjs,padjs,rcoords,pcoords,masks=rfeats.cuda(self.local_rank),pfeats.cuda(self.local_rank),\
             radjs.cuda(self.local_rank),padjs.cuda(self.local_rank),\
             rcoords.cuda(self.local_rank),pcoords.cuda(self.local_rank),\
@@ -817,7 +717,6 @@ class EcTs_Model:
             )
 
         sigmas=sigmas+list(reversed(sigmas_)[1:])
-        print (sigmas)
         pathes,ts_states,ts_energies,nn_energies,nn_max_energies,ts_masks=self.pathgen.path_ode_gen(atoms,rfeats,pfeats,radjs,padjs,redges,pedges,rcoords,pcoords,sigmas,masks)
             
         return pathes, ts_states, ts_energies, nn_energies, nn_max_energies, ts_masks
@@ -852,7 +751,9 @@ class EcTs_Model:
             total_nn_energies.append(nn_energies)
 
         total_pathes=torch.concat(total_pathes,axis=0).clone().detach().cpu().numpy()
-        dist.barrier() 
+
+        if self.device!='cpu':
+            dist.barrier() 
 
         os.system(f'mkdir -p {savepath}')
         if not sample_path_only:
@@ -984,7 +885,7 @@ class EcTs_Model:
         self.write_xyz(RP.ratoms,RP.pcoords,f'{savepath}/p.xyz',title=f'{RP.idx}_p')
 
         dataset=RP_Dataset(Final_RPs,name='sample_path')
-        sample_loader,_=Set_Dataloader(dataset)
+        sample_loader,_=Set_Dataloader(dataset,device=self.device)
         ratoms=RP.ratoms
 
         bar=tqdm(enumerate(sample_loader))
@@ -993,6 +894,7 @@ class EcTs_Model:
         total_ts_energies=[]
         total_nn_energies=[]
         total_nn_max_energies=[]
+        
         for bid,Datas in bar:
             pathes,ts_states,ts_energies,nn_energies,nn_max_energies,ts_masks=self.sample_path_batch(Datas,ratoms,sample_path_only=sample_path_only)
             total_pathes.append(pathes)
@@ -1002,7 +904,8 @@ class EcTs_Model:
             total_nn_energies.append(nn_energies)
 
         total_pathes=torch.concat(total_pathes,axis=0).clone().detach().cpu().numpy()
-        dist.barrier() 
+        if self.device!='cpu':
+            dist.barrier() 
 
         os.system(f'mkdir -p {savepath}')
         if not sample_path_only:
@@ -1045,7 +948,7 @@ class EcTs_Model:
                 self.write_xyz(RP.ratoms,sampled_coords,f'{savepath}/{self.local_rank}-{i}/{j}.xyz',title=f'{RP.idx}_path_{j}')
         if not sample_path_only:
             with open(f'{savepath}/{self.local_rank}-result.txt','w') as f:
-                f.write("Index, Rank, ID, TS Energy Predictions with f_e, TS Energy Predictions with NNPs\n")
+                f.write("Index, Rank, ID, TS Energy Predictions with f_e\n")
                 for i in range(total_pathes.shape[0]):
-                    f.write(f'{RP.idx}, {self.local_rank}, {i}, {total_ts_energies[i]*23.06:.3f}, {total_nn_energies[i]*23.06:.3f} \n')
+                    f.write(f'{RP.idx}, {self.local_rank}, {i}, {total_ts_energies[i]*23.06:.3f}\n')
         return

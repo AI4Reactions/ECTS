@@ -1,0 +1,25 @@
+========================================08/07/2025 17:38:10========================================
+========================================08/07/2025 17:38:10========================================
+Training -- Epochs: 0 bid: 0 step: 0 lr: 1.000E-04 Next Xyz: 0.023 , D: 0.023, E: 160.990,  ; Current Xyz: 0.023 , D: 0.023, Curr E: 2592.935, Next E: 4044.442
+Training -- Epochs: 0 bid: 0 step: 1 lr: 1.000E-04 Next Xyz: 14.691 , D: 62.722, E: 2080.634,  ; Current Xyz: 0.019 , D: 0.024, Curr E: 1175.456, Next E: 6223.888
+Training -- Epochs: 0 bid: 0 step: 2 lr: 1.000E-04 Next Xyz: 79.144 , D: 380.417, E: 3257.066,  ; Current Xyz: 0.020 , D: 0.023, Curr E: 519.253, Next E: 6002.551
+Training -- Epochs: 0 bid: 0 step: 3 lr: 1.000E-04 Next Xyz: 214.909 , D: 1235.167, E: 3183.222,  ; Current Xyz: 0.017 , D: 0.021, Curr E: 388.459, Next E: 5731.966
+Training -- Epochs: 0 bid: 0 step: 4 lr: 1.000E-04 Next Xyz: 2.039 , D: 5.274, E: 4572.085,  ; Current Xyz: 0.016 , D: 0.016, Curr E: 158.930, Next E: 6309.802
+Training -- Epochs: 0 bid: 0 step: 5 lr: 1.000E-04 Next Xyz: 277.244 , D: 1633.648, E: 3176.210,  ; Current Xyz: 0.017 , D: 0.022, Curr E: 367.168, Next E: 5648.883
+Training -- Epochs: 0 bid: 0 step: 6 lr: 1.000E-04 Next Xyz: 382.203 , D: 2213.220, E: 3604.580,  ; Current Xyz: 0.024 , D: 0.023, Curr E: 300.898, Next E: 5972.198
+Training -- Epochs: 0 bid: 0 step: 7 lr: 1.000E-04 Next Xyz: 148.339 , D: 831.012, E: 4310.706,  ; Current Xyz: 0.023 , D: 0.023, Curr E: 250.249, Next E: 6603.786
+Training -- Epochs: 0 bid: 0 step: 8 lr: 1.000E-04 Next Xyz: 692.585 , D: 4091.219, E: 3646.028,  ; Current Xyz: 0.010 , D: 0.008, Curr E: 249.811, Next E: 5797.087
+Training -- Epochs: 0 bid: 0 step: 9 lr: 1.000E-04 Next Xyz: 134.827 , D: 735.028, E: 3582.926,  ; Current Xyz: 0.013 , D: 0.019, Curr E: 239.595, Next E: 5666.518
+Training -- Epochs: 0 bid: 0 step: 10 lr: 1.000E-04 Next Xyz: 483.576 , D: 2605.385, E: 3959.105,  ; Current Xyz: 0.023 , D: 0.023, Curr E: 260.851, Next E: 6242.706
+Training -- Epochs: 0 bid: 0 step: 11 lr: 1.000E-04 Next Xyz: 432.053 , D: 2400.686, E: 3983.591,  ; Current Xyz: 0.023 , D: 0.022, Curr E: 218.383, Next E: 6054.259
+Training -- Epochs: 0 bid: 0 step: 12 lr: 1.000E-04 Next Xyz: 698.028 , D: 3672.679, E: 3433.947,  ; Current Xyz: 0.019 , D: 0.022, Curr E: 266.244, Next E: 5598.266
+Training -- Epochs: 0 bid: 0 step: 13 lr: 1.000E-04 Next Xyz: 3.644 , D: 9.203, E: 4017.779,  ; Current Xyz: 0.022 , D: 0.023, Curr E: 176.784, Next E: 5855.796
+Training -- Epochs: 0 bid: 0 step: 14 lr: 1.000E-04 Next Xyz: 739.715 , D: 4098.624, E: 3648.235,  ; Current Xyz: 0.015 , D: 0.020, Curr E: 256.412, Next E: 5836.088
+Training -- Epochs: 0 bid: 0 step: 15 lr: 1.000E-04 Next Xyz: 117.209 , D: 599.871, E: 3897.625,  ; Current Xyz: 0.023 , D: 0.024, Curr E: 229.080, Next E: 6001.885
+Training -- Epochs: 0 bid: 0 step: 16 lr: 1.000E-04 Next Xyz: 210.914 , D: 1141.275, E: 4033.524,  ; Current Xyz: 0.023 , D: 0.024, Curr E: 278.164, Next E: 6426.497
+Training -- Epochs: 0 bid: 0 step: 17 lr: 1.000E-04 Next Xyz: 0.835 , D: 1.114, E: 3725.083,  ; Current Xyz: 0.016 , D: 0.020, Curr E: 219.943, Next E: 5747.345
+Training -- Epochs: 0 bid: 0 step: 18 lr: 1.000E-04 Next Xyz: 210.471 , D: 1056.110, E: 3686.097,  ; Current Xyz: 0.024 , D: 0.025, Curr E: 258.786, Next E: 5895.999
+========================================08/07/2025 17:41:02========================================
+========================================08/07/2025 17:41:02========================================
+Training -- Epochs: 0 bid: 0 step: 0 lr: 1.000E-04 Next Xyz: 0.036 , D: 0.026, E: 9.829,  ; Current Xyz: 0.036 , D: 0.026, Curr E: 1412.197, Next E: 1191.836
+Training -- Epochs: 0 bid: 0 step: 1 lr: 1.000E-04 Next Xyz: 0.008 , D: 0.008, E: 212.738,  ; Current Xyz: 0.027 , D: 0.023, Curr E: 619.685, Next E: 1528.174

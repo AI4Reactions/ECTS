@@ -132,7 +132,6 @@ class RP_pair:
 
         self.tsenergy=tsenergy
         self.tsforces=tsforces
-
         return 
 
     def Get_3D_Graph_Tensor_Ts(self,max_atoms= None,max_bonds=None,max_angles=None,max_torsions=None):
@@ -148,8 +147,6 @@ class RP_pair:
             max_angles=len(za_)
         if max_torsions is None:
             max_torsions=len(zd_)
-            
-        #print (max_bonds,max_angles,max_torsions)
         
         redges=np.where(self.radjs>0,1,0)
         pedges=np.where(self.padjs>0,1,0)
@@ -177,10 +174,7 @@ class RP_pair:
         redges_mat[:self.natoms,:self.natoms]=torch.Tensor(Adjs_to_Onek(redges,len(GP.bond_types)+1)).long()
         pedges_mat[:self.natoms,:self.natoms]=torch.Tensor(Adjs_to_Onek(pedges,len(GP.bond_types)+1)).long()
 
-        #print (self.rcoords,rcoords[:self.natoms].shape,self.natoms)
-        #print (torch.Tensor(self.rcoords)-torch.mean(torch.Tensor(self.rcoords),dim=0,keepdims=True))
         rcoords[:self.natoms]=torch.Tensor(self.rcoords)-torch.mean(torch.Tensor(self.rcoords),dim=0,keepdims=True)
-
         pcoords[:self.natoms]=torch.Tensor(self.pcoords)-torch.mean(torch.Tensor(self.pcoords),dim=0,keepdims=True)
         
         zb=torch.zeros((max_bonds,2)).long()
@@ -216,6 +210,7 @@ class RP_pair:
         rforces=torch.zeros((max_atoms,3)).float()
         pforces=torch.zeros((max_atoms,3)).float()
         tsforces=torch.zeros((max_atoms,3)).float()
+        
         if self.rforces is not None:
             rforces[:self.natoms]=torch.Tensor(self.rforces).float()
         if self.pforces is not None:

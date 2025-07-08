@@ -1,1 +1,2 @@
-CUDA_VISIBLE_DEVICES=7 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
+CUDA_VISIBLE_DEVICES=3 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
+#CUDA_VISIBLE_DEVICES=2 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample.py -i ctrl_sample.json -r ./test_rc/r.xyz -p ./test_rc/p.xyz -n test --steps 1

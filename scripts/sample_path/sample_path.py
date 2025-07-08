@@ -30,20 +30,22 @@ def create_rp_pair(rfile,pfile,savename):
     patoms,pcharge,pxyz=read_xyz_file(pfile)
     radjs,rmol=xyz2AC(ratoms,rxyz,charge=0)
     padjs,pmol=xyz2AC(patoms,pxyz,charge=0)
-    
+
     rp_pair=RP_pair(
                     ratoms=ratoms,patoms=patoms,
                     radjs=radjs,padjs=padjs,
-                    rxyz=rxyz,pxyz=pxyz,
+                    rcoords=rxyz,pcoords=pxyz,
                     idx=savename
                     )    
     return rp_pair
 
 rp=create_rp_pair(rxyzfile,pxyzfile,savename)
+print (rp)
 
 Model=EcTs_Model(modelname="EcTs_Model",local_rank=local_rank)
-
 GP.final_timesteps=diffsteps+1
-
-Model.Sample_Path(rp,path_num=1,
+Model.Sample_Path(rp,path_num=2,sample_path_only=False,
                 savepath=f'{savepath}')
+#
+#Result_Dict=Model.Sample_Ts(test_rps[i],ts_num_per_mol=40,
+#                                 savepath=f'{savepath}/{diffsteps}/{test_rps[i].idx}')

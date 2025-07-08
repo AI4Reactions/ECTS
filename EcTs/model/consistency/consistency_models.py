@@ -254,6 +254,7 @@ class ConsistencyTraining:
         sigma_data: float = 0.5,
         initial_timesteps: int = 2,
         final_timesteps: int = 150,
+        with_energy=False,
     ) -> None:
         self.sigma_min = sigma_min
         self.sigma_max = sigma_max
@@ -261,6 +262,7 @@ class ConsistencyTraining:
         self.sigma_data = sigma_data
         self.initial_timesteps = initial_timesteps
         self.final_timesteps = final_timesteps
+        self.with_energy = with_energy
 
     def __call__(
         self,
@@ -322,8 +324,7 @@ class ConsistencyTraining:
         next_sigmas = sigmas[timesteps + 1]
 
         next_xyzs = xyzs + pad_dims_like(next_sigmas, xyzs) * noise
-        with torch.no_grad():
-            next_xyzs = online_model(
+        next_xyzs = online_model(
             rfeats,pfeats,
             radjs,padjs,
             rcoords,pcoords,
@@ -334,14 +335,17 @@ class ConsistencyTraining:
             self.sigma_min,
             )
         
-        next_xyzs_clone = next_xyzs.clone().detach()
-        next_energies, next_forces = energy_online_model( 
-            rfeats,pfeats,
-            redges,pedges,
-            rcoords,pcoords,
-            next_xyzs_clone,
-            next_sigmas,
-            masks)
+        if self.with_energy:
+            next_xyzs_clone = next_xyzs.clone().detach()
+            next_energies, next_forces = energy_online_model( 
+                rfeats,pfeats,
+                redges,pedges,
+                rcoords,pcoords,
+                next_xyzs_clone,
+                next_sigmas,
+                masks)
+        else:
+            next_energies,next_forces=None,None
 
         with torch.no_grad():
             current_xyzs = xyzs + pad_dims_like(current_sigmas, xyzs) * noise
@@ -355,16 +359,18 @@ class ConsistencyTraining:
                 self.sigma_data,
                 self.sigma_min,
             )
-
-            current_xyzs_clone = current_xyzs.clone().detach()
-            current_energies, current_forces = energy_ema_model(
-                rfeats,pfeats,
-                redges,pedges,
-                rcoords,pcoords,
-                current_xyzs_clone,
-                current_sigmas,
-                masks,
-            )
+            if self.with_energy:
+                current_xyzs_clone = current_xyzs.clone().detach()
+                current_energies, current_forces = energy_ema_model(
+                    rfeats,pfeats,
+                    redges,pedges,
+                    rcoords,pcoords,
+                    current_xyzs_clone,
+                    current_sigmas,
+                    masks,
+                )
+            else:
+                current_energies,current_forces=None,None
         
         return ( next_xyzs, next_energies, next_forces, current_xyzs, current_energies, current_forces)
 
@@ -378,9 +384,10 @@ class ConsistencySamplingAndEditing:
     sigma_data : float, default=0.5
         Standard deviation of the data.
     """
-    def __init__(self, sigma_min: float = 0.002, sigma_data: float = 0.5) -> None:
+    def __init__(self, sigma_min: float = 0.002, sigma_data: float = 0.5,with_energy=False) -> None:
         self.sigma_min = sigma_min
         self.sigma_data = sigma_data
+        self.with_energy=with_energy
 
     def __call__(
         self,
@@ -457,20 +464,23 @@ class ConsistencySamplingAndEditing:
         x = y + sigmas[0] * torch.randn_like(y) if add_initial_noise else y
         #x_list.append(x)
         sigma = torch.full((x.shape[0],), sigmas[0], dtype=x.dtype, device=x.device)
+        
         print (rfeats.shape,pfeats.shape,radjs.shape,padjs.shape,rcoords.shape,pcoords.shape,x.shape,sigma.shape,masks.shape)
         x = model(
             rfeats, pfeats, radjs, padjs, rcoords, pcoords, x, sigma, masks,self.sigma_data, self.sigma_min
         )
-        e,f = energy_model(
-            rfeats, pfeats, redges, pedges, rcoords, pcoords, x, sigma, masks
-        )
+        if self.with_energy:
+            e,f = energy_model(
+                rfeats, pfeats, redges, pedges, rcoords, pcoords, x, sigma, masks
+            )
 
         #if clip_denoised:
         #    x = x.clamp(min=-1.0, max=1.0)
         x = self.__mask_transform(x, y, transform_mask, transform_fn, inverse_transform_fn)
         x_list.append(x)
-        e_list.append(e)
-        f_list.append(f)
+        if self.with_energy:
+            e_list.append(e)
+            f_list.append(f)
 
         # Progressively denoise the sample and skip the first step as it has already
         # been run
@@ -486,15 +496,20 @@ class ConsistencySamplingAndEditing:
             x = model(
                 rfeats, pfeats, radjs, padjs, rcoords, pcoords, x, sigma, masks, self.sigma_data, self.sigma_min
             )
-            e,f = energy_model(
-                rfeats, pfeats, redges, pedges, rcoords, pcoords, x, sigma, masks
-            )
+            if self.with_energy:
+                e,f = energy_model(
+                    rfeats, pfeats, redges, pedges, rcoords, pcoords, x, sigma, masks
+                )
             #if clip_denoised:
             #    x = x.clamp(min=-1.0, max=1.0)
             x = self.__mask_transform(x, y, transform_mask, transform_fn, inverse_transform_fn)
             x_list.append(x)
-            e_list.append(e)
-            f_list.append(f)
+            if self.with_energy:
+                e_list.append(e)
+                f_list.append(f)
+        
+        if not self.with_energy:
+            e,f=None,None
 
         return x,e,f,x_list,e_list,f_list
 

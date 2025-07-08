@@ -32,11 +32,41 @@ The pretrained models of ECTS is avaliable from https://figshare.com/account/pro
 
 The RXNID of reactions in different datasets are provided in ECTS/datasets. The processed datasets is avaliable from https://figshare.com/account/projects/255383/articles/29487893
 
+## Training
+
+Train the TS predictor $f_Ts$ and Energy predictor $f_E$ together:
+
+	cd scripts/train_ts
+	
+	CUDA_VISIBLE_DEVICES=0,1 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 2 --rdzv_id 1 train_ts_and_e.py -i ctrl_ts_e.json
+
+Train the TS predictor $f_Ts$ only:
+
+	cd scripts/train_ts
+	
+	CUDA_VISIBLE_DEVICES=0,1 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 2 --rdzv_id 1 train_ts.py -i ctrl_ts.json
+
+Train the energy predictor $f_E only:
+	
+	cd scripts/train_ts
+	
+	CUDA_VISIBLE_DEVICES=0,1 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 2 --rdzv_id 1 train_e.py -i ctrl_e.json
+
+Train the path structure generator $f_Path$ only:
+	
+	cd scripts/train_path
+
+	CUDA_VISIBLE_DEVICES=0,1 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 2 --rdzv_id 1 train_path.py -i ctrl_path.json
+	
+	cd EcTs_Model/model 
+	
+	mv online_model_perepoch.cpk path_online_model_perepoch.cpk
+
 ## Functions
 
 Examples for TS generation
 
-	cd scripts
+	cd scripts/sample_ts
 
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
 	
@@ -44,7 +74,7 @@ Results were saved in samples/rxn3086 folder.
 
 Examples for Path interpolation
 
-	cd scripts 	
+	cd scripts/sample_path 	
 
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 sample_path.py -i ctrl_sample.json -r ./rxn3086/r.xyz -p ./rxn3086/p.xyz -n rxn3086 --steps 1
 
@@ -52,13 +82,17 @@ Results were saved in sample_pathes/rxn3086 folder.
 
 ## Evaluation
 
-To evaluate ECTS on the test set
+To evaluate TS structure and $E_a$ predicted by ECTS on the test set
 
-	cd scripts
+	cd scripts/eval_ts
 
 	CUDA_VISIBLE_DEVICES=0 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 eval.py -i ctrl_sample.json  --steps 1
 
+To evaluate ECTS-Path on the test set
 
+	cd scripts/eval_path
+
+	CUDA_VISIBLE_DEVICES=3 torchrun --rdzv_backend c10d --rdzv_endpoint localhost:0 --nnodes 1 --nproc_per_node 1 --rdzv_id 1 eval_path.py -i ctrl_sample.json  --steps 1
 
 ## Link to papers
 https://chemrxiv.org/engage/chemrxiv/article-details/67cf041bfa469535b9bc28d4
