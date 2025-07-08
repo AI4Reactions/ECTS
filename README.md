@@ -34,7 +34,7 @@ The RXNID of reactions in different datasets are provided in ECTS/datasets. The 
 
 ## Training
 
-Train the TS predictor $f_Ts$ and Energy predictor $f_E$ together:
+Train the TS predictor $f_{Ts}$ and Energy predictor $f_E$ together:
 
 	cd scripts/train_ts
 	
